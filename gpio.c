@@ -113,7 +113,7 @@ int gpio_write(PIN_HEADER index, GPIO_PIN_VAL *gpio_val)
     int fd = 0;
     int gpio_line = 0;
     static struct gpio_v2_line_request req; // 값 유지를 위해서, 닫아버리면? 값이 초기화 됨
-    static struct gpio_v2_line_values val;
+    struct gpio_v2_line_values val;
     char gpio_route[64] = {
         0,
     };
