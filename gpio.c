@@ -1,4 +1,5 @@
 #include "gpio.h"
+#include "timer.h"
 sem_t gpio_sem[GPIO_CHIP_NUM];
 
 static GPIO_CHIP_NUMBER get_gpio_line(PIN_HEADER index, char *gpio_route)
@@ -32,6 +33,27 @@ static GPIO_CHIP_NUMBER get_gpio_line(PIN_HEADER index, char *gpio_route)
     }
 
     return chip_num;
+}
+
+static void gpio_sleep_ms(int toggle_period_ms)
+{
+    static int gpio_val = 0;
+
+    if (check_expired(TIMER_GPIO) > 0)
+    {
+        gpio_write(P8_11, &gpio_val);
+        printf("%s\n", (gpio_val == 0) ? "low" : "high");
+        gpio_val = (gpio_val + 1) % 2;
+        set_timer_ms(toggle_period_ms, TIMER_GPIO);
+    }
+}
+
+static void thread_toggle_gpio()
+{
+    while (1)
+    {
+        gpio_sleep_ms(500);
+    }
 }
 
 int gpio_init()
@@ -165,9 +187,46 @@ int gpio_write(PIN_HEADER index, GPIO_PIN_VAL *gpio_val)
 void gpio_print_val(PIN_HEADER index)
 {
     GPIO_PIN_VAL gpio_val = GPIO_VAL_NONE;
-    char gpio_route[64] = {0, };
+    char gpio_route[64] = {
+        0,
+    };
     GPIO_CHIP_NUMBER gpio_chip = get_gpio_line(index, gpio_route);
     gpio_read(index, &gpio_val);
     printf("[route : %s]", gpio_route);
-    printf("[index : %d] val : %s\n", index, (gpio_val == GPIO_LOW) ? "gpio low" : (gpio_val == GPIO_HIGH) ? "gpio high" : "gpio_none");
+    printf("[index : %d] val : %s\n", index, (gpio_val == GPIO_LOW) ? "gpio low" : (gpio_val == GPIO_HIGH) ? "gpio high"
+                                                                                                           : "gpio_none");
+}
+
+void start_gpio_thread()
+{
+    pthread_t tid = 0;
+    int ret = 0;
+
+    ret = gpio_init();
+    if(ret < 0)
+    {
+        printf("gpio init fail\n");
+        return;
+    }
+
+    ret = timer_init();
+    if(ret < 0)
+    {
+        printf("timer init fail\n");
+        return;
+    }
+
+    ret = pthread_create(&tid, NULL, (void *)&thread_toggle_gpio, NULL);
+    if (ret < 0)
+    {
+        perror("thread create fail");
+        return;
+    }
+
+    ret = pthread_detach(tid);
+    if(ret < 0)
+    {
+        perror("thread detach fail");
+        return;
+    }
 }

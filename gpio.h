@@ -115,4 +115,6 @@ int gpio_read(PIN_HEADER index, GPIO_PIN_VAL *gpio_val);
 int gpio_write(PIN_HEADER index, GPIO_PIN_VAL *gpio_val);
 
 void gpio_print_val(PIN_HEADER index);
+
+void start_gpio_thread();
 #endif
